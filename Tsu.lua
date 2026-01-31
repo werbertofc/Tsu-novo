@@ -1,21 +1,14 @@
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-print("--- Iniciando Script de Limpeza ---")
+print("--- Script Iniciado ---")
 
--- --- PARTE 1: Limpeza dentro de 'NewMapFully' ---
+-- =================================================================
+-- PARTE 1: APAGAR APENAS AS VIP DOORS
+-- =================================================================
 local newMap = Workspace:FindFirstChild("NewMapFully")
 
 if newMap then
-    -- 1.1 Apagar InvisWalls
-    local invisWalls = newMap:FindFirstChild("InvisWalls")
-    if invisWalls then
-        invisWalls:Destroy()
-        print("✅ Sucesso: Pasta 'InvisWalls' apagada.")
-    else
-        warn("⚠️ Aviso: 'InvisWalls' não encontrada em NewMapFully.")
-    end
-
-    -- 1.2 Apagar VIPDoors (NOVO)
     local vipDoors = newMap:FindFirstChild("VIPDoors")
     if vipDoors then
         vipDoors:Destroy()
@@ -24,23 +17,31 @@ if newMap then
         warn("⚠️ Aviso: 'VIPDoors' não encontrada em NewMapFully.")
     end
 else
-    warn("❌ Erro: A pasta principal 'NewMapFully' não existe no Workspace.")
+    warn("❌ Erro: A pasta 'NewMapFully' não foi encontrada.")
 end
 
--- --- PARTE 2: Limpeza dentro de 'Live' ---
-local liveFolder = Workspace:FindFirstChild("Live")
+-- =================================================================
+-- PARTE 2: COLETAR DINHEIRO (90 SLOTS)
+-- =================================================================
+-- Usamos task.spawn para que o loop do dinheiro não trave o resto do jogo
+task.spawn(function()
+    -- Localiza o Remote apenas uma vez para otimizar
+    local collectRemote = ReplicatedStorage:WaitForChild("SharedModules")
+        :WaitForChild("Network")
+        :WaitForChild("Remotes")
+        :WaitForChild("Collect Earnings")
 
-if liveFolder then
-    -- 2.1 Apagar Tsunamis
-    local tsunamis = liveFolder:FindFirstChild("Tsunamis")
-    if tsunamis then
-        tsunamis:Destroy()
-        print("✅ Sucesso: Objeto 'Tsunamis' apagado.")
-    else
-        warn("⚠️ Aviso: 'Tsunamis' não encontrado dentro de Live.")
+    print("💰 Auto-Collect ativado para 90 slots!")
+
+    while true do
+        -- Loop de 1 até 90 (assumindo que os slots são numerados de 1 a 90)
+        for i = 1, 90 do
+            -- O código original usava "1" (string), então convertemos o número para string
+            local args = {tostring(i)} 
+            collectRemote:FireServer(unpack(args))
+        end
+        
+        -- Espera 1 segundo antes de coletar tudo novamente
+        task.wait(1)
     end
-else
-    warn("❌ Erro: A pasta principal 'Live' não existe no Workspace.")
-end
-
-print("--- Script de Limpeza Finalizado ---")
+end)
