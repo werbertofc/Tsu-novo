@@ -1,6 +1,7 @@
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -10,7 +11,7 @@ local rootPart = character:WaitForChild("HumanoidRootPart")
 local startPos = rootPart.CFrame 
 
 print("📍 Posição inicial salva!")
-print("--- Script Inteligente: Teleporte por Proximidade (Raio 1m) ---")
+print("--- Script Modo IMÃ: Só para quando o item sumir ---")
 
 -- =================================================================
 -- PARTE 1: APAGAR VIP DOORS
@@ -42,13 +43,13 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK (Lógica Inteligente de Distância)
+-- PARTE 3: LUCKY BLOCK (Lógica de Imã com pausa no 3º TP)
 -- =================================================================
 task.spawn(function()
-    print("🍀 Monitoramento Inteligente Iniciado!")
+    print("🍀 Magnet Lucky Block Iniciado!")
     
     while true do
-        task.wait(0.1) -- Verificação rápida
+        task.wait() -- Loop super rápido
         
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
@@ -56,7 +57,7 @@ task.spawn(function()
             local hum = char.Humanoid
             
             if hum.Health <= 0 then 
-                task.wait(1)
+                task.wait(1) 
                 continue 
             end
 
@@ -66,79 +67,51 @@ task.spawn(function()
             local luckyBlock = friendsFolder and friendsFolder:FindFirstChild("OG Lucky Block")
 
             if luckyBlock then
-                print("🚀 Lucky Block detectado! Iniciando teleporte inteligente...")
+                print("🚀 Objeto detectado! Grudando nele...")
                 
-                local morreuNoProcesso = false
-                
-                -- Define a posição alvo
-                local targetCFrame
-                if luckyBlock:FindFirstChild("Handle") then
-                    targetCFrame = luckyBlock.Handle.CFrame
-                else
-                    targetCFrame = luckyBlock:GetPivot()
-                end
+                local teleportCount = 0
 
-                -- === ETAPA 1: IR ATÉ O BLOCO (Checa Distância) ===
-                -- 3.5 studs é aproximadamente 1 metro no Roblox
-                while (hrp.Position - targetCFrame.Position).Magnitude > 3.5 do
-                    
-                    -- Se o bloco sumiu ou player morreu, para
-                    if hum.Health <= 0 or not luckyBlock.Parent then
-                        morreuNoProcesso = true
-                        break 
-                    end
-                    
-                    -- Teleporta
-                    hrp.CFrame = targetCFrame
-                    
-                    -- Atualiza a posição alvo caso o bloco se mova
-                    if luckyBlock:FindFirstChild("Handle") then
-                        targetCFrame = luckyBlock.Handle.CFrame
-                    else
-                        targetCFrame = luckyBlock:GetPivot()
-                    end
-
-                    task.wait() -- Espera o mínimo possível (frame a frame)
-                end
-
-                if morreuNoProcesso then 
-                    task.wait(0.5)
-                    continue 
-                end
-                
-                print("✅ Chegamos perto (Raio < 1m). Parando teleporte.")
-
-                -- === ETAPA 2: ESPERA DE 6 SEGUNDOS ===
-                print("⏳ Aguardando 6 segundos...")
-                for i = 1, 60 do
-                    if hum.Health <= 0 then
-                        morreuNoProcesso = true
-                        break 
-                    end
-                    if not luckyBlock.Parent then
-                        break -- Pegou o item
-                    end
-                    task.wait(0.1)
-                end
-
-                if morreuNoProcesso then
-                    task.wait(0.5)
-                    continue
-                end
-
-                -- === ETAPA 3: VOLTAR PARA O INÍCIO (Checa Distância) ===
-                print("🏠 Voltando para a base segura...")
-                
-                -- Loop até estar perto do início (Raio de 1 metro)
-                while (hrp.Position - startPos.Position).Magnitude > 3.5 do
+                -- === LOOP: SÓ SAI DAQUI QUANDO O OBJETO SUMIR ===
+                while luckyBlock.Parent do
+                    -- Verifica vida
                     if hum.Health <= 0 then break end
+
+                    -- 1. Teleporta para o objeto
+                    if luckyBlock:FindFirstChild("Handle") then
+                        hrp.CFrame = luckyBlock.Handle.CFrame
+                    else
+                        hrp.CFrame = luckyBlock:GetPivot()
+                    end
                     
-                    hrp.CFrame = startPos
-                    task.wait() -- Frame a frame
+                    teleportCount = teleportCount + 1
+                    
+                    -- 2. Regra do 3º Teleporte: Esperar 6 segundos
+                    if teleportCount == 3 then
+                        print("⏳ 3º Teleporte: Aguardando 6s (ou até sumir)...")
+                        -- Loop de espera inteligente
+                        for k = 1, 60 do -- 60 * 0.1 = 6 segundos
+                            if not luckyBlock.Parent then break end -- Se sumiu, para de esperar
+                            if hum.Health <= 0 then break end
+                            task.wait(0.1)
+                        end
+                    end
+
+                    -- Delay rápido entre teleportes (para manter grudado)
+                    task.wait(0.05) 
                 end
                 
-                print("✅ De volta à segurança.")
-                task.wait(1)
+                -- === OBJETO SUMIU (PEGAMOS!) -> VOLTAR PARA O INÍCIO ===
+                print("✅ Objeto coletado/sumiu! Voltando para a base...")
+                
+                -- Teleporta rápido para o início várias vezes para não bugar
+                for j = 1, 15 do
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                         LocalPlayer.Character.HumanoidRootPart.CFrame = startPos
+                    end
+                    task.wait(0.05) -- Muito rápido
+                end
+                
+                print("🏠 Seguro na base. Aguardando próximo...")
             end
         end
     end
