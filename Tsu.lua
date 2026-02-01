@@ -1,17 +1,19 @@
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- ================= CONFIGURAÇÃO DA ÁREA SEGURA =================
--- Tenta achar o SpawnLocation automático. Se não achar, vai para a posição 0, 50, 0
-local SpawnLocation = Workspace:FindFirstChild("SpawnLocation") 
-local SAFE_ZONE_CFRAME = SpawnLocation and SpawnLocation.CFrame or CFrame.new(0, 50, 0)
--- ===============================================================
+-- ================= CONFIGURAÇÃO DO INÍCIO AUTOMÁTICO =================
+-- Pega a posição atual do jogador assim que o script executa
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local rootPart = character:WaitForChild("HumanoidRootPart")
+local startPos = rootPart.CFrame -- Salva a posição exata de onde você ativou o script
 
-print("--- Script Iniciado: VIP Doors + Auto Collect + Lucky Block ---")
+print("📍 Posição inicial salva! É para cá que voltaremos.")
+-- =====================================================================
+
+print("--- Script Iniciado: VIP Doors + Auto Collect + Teleporte com Delay ---")
 
 -- =================================================================
 -- PARTE 1: APAGAR VIP DOORS (Executa uma vez)
@@ -44,46 +46,45 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK TELEPORT (Monitoramento constante)
+-- PARTE 3: LUCKY BLOCK (Teleporte -> Espera 6s -> Volta)
 -- =================================================================
 task.spawn(function()
-    print("🍀 Caçador de Lucky Block Ativado!")
+    print("🍀 Monitoramento de Lucky Block Iniciado!")
     
-    local perseguiu = false -- Variável para saber se estavamos perseguindo o bloco
-
     while true do
-        task.wait() -- Roda super rápido para não perder o item
+        task.wait(0.2) -- Verifica rapidamente, mas sem travar o jogo
         
-        -- Verifica se o personagem existe
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = LocalPlayer.Character.HumanoidRootPart
+        -- Atualiza o personagem caso você tenha morrido/resetado
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
             
-            -- Caminho da pasta: Workspace > Live > Friends > OG Lucky Block
+            -- Verifica o caminho: Workspace > Live > Friends > OG Lucky Block
             local liveFolder = Workspace:FindFirstChild("Live")
             local friendsFolder = liveFolder and liveFolder:FindFirstChild("Friends")
             local luckyBlock = friendsFolder and friendsFolder:FindFirstChild("OG Lucky Block")
 
             if luckyBlock then
-                -- CENÁRIO A: O Lucky Block ESTÁ na pasta (Teleportar para ele)
-                perseguiu = true
+                print("🚀 Lucky Block encontrado! Teleportando...")
                 
-                -- Se o bloco tiver um Handle (parte física), teleporta pra ele
+                -- 1. Teleporta para o Lucky Block
                 if luckyBlock:FindFirstChild("Handle") then
                     hrp.CFrame = luckyBlock.Handle.CFrame
-                elseif luckyBlock:IsA("BasePart") then
-                     hrp.CFrame = luckyBlock.CFrame
                 else
-                    -- Caso seja um modelo sem Handle, tenta ir para a posição dele
                     hrp.CFrame = luckyBlock:GetPivot()
                 end
                 
-            elseif perseguiu then
-                -- CENÁRIO B: O Lucky Block SUMIU da pasta e estavamos perseguindo (Pegamos ele!)
-                -- Teleportar de volta para a Base/Spawn
-                hrp.CFrame = SAFE_ZONE_CFRAME + Vector3.new(0, 5, 0) -- Um pouco acima para não bugar
-                print("🏠 Item pego! Voltando para a base segura.")
-                perseguiu = false -- Reseta o estado
-                task.wait(1) -- Espera um pouco para não teleportar loucamente
+                -- 2. Espera 6 segundos LÁ no objeto (como pedido)
+                task.wait(6)
+                
+                -- 3. Teleporta de volta para o início salvo
+                print("🏠 Voltando para o início...")
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = startPos
+                end
+                
+                -- 4. Espera um pouquinho antes de checar de novo para não bugar
+                task.wait(1)
             end
         end
     end
