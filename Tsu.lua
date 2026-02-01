@@ -5,28 +5,28 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 -- ================= CONFIGURAÇÃO DO INÍCIO AUTOMÁTICO =================
--- Salva o local seguro assim que você executa o script
+-- Salva a posição assim que o script liga
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
 local startPos = rootPart.CFrame 
 
-print("📍 Posição inicial salva com sucesso!")
-print("--- Script Iniciado: VIP Doors + Auto Collect + Teleporte Triplo ---")
+print("📍 Posição inicial salva!")
+print("--- Script Iniciado: Modo Persistente (4x Teleportes + Anti-Morte) ---")
 
 -- =================================================================
--- PARTE 1: APAGAR VIP DOORS (Apenas uma vez)
+-- PARTE 1: APAGAR VIP DOORS
 -- =================================================================
 local newMap = Workspace:FindFirstChild("NewMapFully")
 if newMap then
     local vipDoors = newMap:FindFirstChild("VIPDoors")
     if vipDoors then
         vipDoors:Destroy()
-        print("✅ Sucesso: Pasta 'VIPDoors' apagada.")
+        print("✅ VIPDoors apagadas.")
     end
 end
 
 -- =================================================================
--- PARTE 2: AUTO COLLECT (Loop de 3 segundos - Slots 1 ao 90)
+-- PARTE 2: AUTO COLLECT (Loop de 3 segundos)
 -- =================================================================
 task.spawn(function()
     local collectRemote = ReplicatedStorage:WaitForChild("SharedModules")
@@ -34,7 +34,6 @@ task.spawn(function()
         :WaitForChild("Remotes")
         :WaitForChild("Collect Earnings")
 
-    print("💰 Auto-Collect Ativado!")
     while true do
         for i = 1, 90 do
             collectRemote:FireServer(tostring(i))
@@ -44,51 +43,90 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK (Teleporte 3x -> Espera 6s -> Volta)
+-- PARTE 3: LUCKY BLOCK (Lógica Persistente)
 -- =================================================================
 task.spawn(function()
-    print("🍀 Monitoramento de Lucky Block Iniciado!")
+    print("🍀 Monitoramento Iniciado!")
     
     while true do
-        task.wait(0.2) -- Loop rápido de verificação
+        task.wait(0.1) -- Checagem rápida
         
         local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
+        -- Checa se o player está vivo e tem corpo
+        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
             local hrp = char.HumanoidRootPart
+            local hum = char.Humanoid
             
-            -- Caminho: Workspace > Live > Friends > OG Lucky Block
+            -- Se a vida for 0, espera renascer antes de tentar qualquer coisa
+            if hum.Health <= 0 then 
+                task.wait(1)
+                continue 
+            end
+
+            -- Busca o objeto
             local liveFolder = Workspace:FindFirstChild("Live")
             local friendsFolder = liveFolder and liveFolder:FindFirstChild("Friends")
             local luckyBlock = friendsFolder and friendsFolder:FindFirstChild("OG Lucky Block")
 
             if luckyBlock then
-                print("🚀 Lucky Block detectado! Forçando teleporte...")
+                print("🚀 Lucky Block encontrado! Iniciando sequência de 4 teleportes...")
+                
+                local morreuNoProcesso = false
 
-                -- === CORREÇÃO: TELEPORTAR 3 VEZES PARA NÃO VOLTAR ===
-                for i = 1, 3 do
-                    -- Verifica se o bloco ainda existe antes de tentar ir
-                    if luckyBlock.Parent then
-                        if luckyBlock:FindFirstChild("Handle") then
-                            hrp.CFrame = luckyBlock.Handle.CFrame
-                        else
-                            hrp.CFrame = luckyBlock:GetPivot()
-                        end
+                -- === ETAPA 1: 4 TELEPORTES (1s de intervalo) ===
+                for i = 1, 4 do
+                    -- Verifica se morreu ou se o bloco sumiu antes de teleportar
+                    if hum.Health <= 0 or not luckyBlock.Parent then
+                        morreuNoProcesso = true
+                        break -- Quebra o loop dos teleportes para reiniciar
                     end
-                    -- Espera minúscula para o servidor registrar a posição
-                    task.wait(0.1) 
+
+                    -- Realiza o teleporte
+                    if luckyBlock:FindFirstChild("Handle") then
+                        hrp.CFrame = luckyBlock.Handle.CFrame
+                    else
+                        hrp.CFrame = luckyBlock:GetPivot()
+                    end
+                    
+                    print("Teleporte " .. i .. "/4")
+                    task.wait(1) -- Espera 1 segundo entre cada teleporte
                 end
-                
-                print("⏳ Aguardando 6 segundos no objeto...")
-                -- Espera 6 segundos no local para garantir a coleta
-                task.wait(6)
-                
-                -- Volta para o início
-                print("🏠 Voltando para o início...")
+
+                -- Se morreu durante os teleportes, pula pro início do While (reinicia tudo)
+                if morreuNoProcesso then 
+                    print("💀 Morreu durante os teleportes! Reiniciando ciclo...")
+                    task.wait(0.5) -- Espera um pouco pro personagem carregar
+                    continue 
+                end
+
+                -- === ETAPA 2: ESPERA DE 6 SEGUNDOS (Com checagem de morte) ===
+                print("⏳ Aguardando 6 segundos (Monitorando vida)...")
+                -- Fazemos um loop de 60 x 0.1s para checar a vida a todo momento
+                for i = 1, 60 do
+                    if hum.Health <= 0 then
+                        morreuNoProcesso = true
+                        break -- Morreu? Para de esperar e reinicia
+                    end
+                    if not luckyBlock.Parent then
+                        break -- Bloco sumiu (alguém pegou)? Para de esperar
+                    end
+                    task.wait(0.1)
+                end
+
+                -- Se morreu na espera, reinicia
+                if morreuNoProcesso then
+                    print("💀 Morreu durante a espera! Reiniciando ciclo...")
+                    task.wait(0.5)
+                    continue
+                end
+
+                -- === ETAPA 3: VOLTAR PARA O INÍCIO ===
+                -- Só acontece se você sobreviveu a tudo e o bloco sumiu ou o tempo acabou
+                print("🏠 Voltando para a base segura...")
                 if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     LocalPlayer.Character.HumanoidRootPart.CFrame = startPos
                 end
                 
-                -- Espera 1 segundo para estabilizar antes de procurar de novo
                 task.wait(1)
             end
         end
