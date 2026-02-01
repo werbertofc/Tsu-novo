@@ -5,13 +5,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 -- ================= CONFIGURAÇÃO DO INÍCIO AUTOMÁTICO =================
--- Salva a posição assim que o script liga (Base Segura)
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
 local startPos = rootPart.CFrame 
 
 print("📍 Posição inicial salva!")
-print("--- Script Atualizado: Teleporte 4x Ida e 4x Volta ---")
+print("--- Script Inteligente: Teleporte por Proximidade (Raio 1m) ---")
 
 -- =================================================================
 -- PARTE 1: APAGAR VIP DOORS
@@ -43,21 +42,19 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK (4x Ida -> 6s Espera -> 4x Volta)
+-- PARTE 3: LUCKY BLOCK (Lógica Inteligente de Distância)
 -- =================================================================
 task.spawn(function()
-    print("🍀 Monitoramento Iniciado!")
+    print("🍀 Monitoramento Inteligente Iniciado!")
     
     while true do
-        task.wait(0.1) -- Checagem rápida
+        task.wait(0.1) -- Verificação rápida
         
         local char = LocalPlayer.Character
-        -- Checa se o player está vivo e tem corpo
         if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
             local hrp = char.HumanoidRootPart
             local hum = char.Humanoid
             
-            -- Se a vida for 0, espera renascer
             if hum.Health <= 0 then 
                 task.wait(1)
                 continue 
@@ -69,32 +66,47 @@ task.spawn(function()
             local luckyBlock = friendsFolder and friendsFolder:FindFirstChild("OG Lucky Block")
 
             if luckyBlock then
-                print("🚀 Lucky Block encontrado! Iniciando sequência de IDA...")
+                print("🚀 Lucky Block detectado! Iniciando teleporte inteligente...")
                 
                 local morreuNoProcesso = false
+                
+                -- Define a posição alvo
+                local targetCFrame
+                if luckyBlock:FindFirstChild("Handle") then
+                    targetCFrame = luckyBlock.Handle.CFrame
+                else
+                    targetCFrame = luckyBlock:GetPivot()
+                end
 
-                -- === ETAPA 1: 4 TELEPORTES PARA O OBJETO ===
-                for i = 1, 4 do
+                -- === ETAPA 1: IR ATÉ O BLOCO (Checa Distância) ===
+                -- 3.5 studs é aproximadamente 1 metro no Roblox
+                while (hrp.Position - targetCFrame.Position).Magnitude > 3.5 do
+                    
+                    -- Se o bloco sumiu ou player morreu, para
                     if hum.Health <= 0 or not luckyBlock.Parent then
                         morreuNoProcesso = true
                         break 
                     end
-
-                    if luckyBlock:FindFirstChild("Handle") then
-                        hrp.CFrame = luckyBlock.Handle.CFrame
-                    else
-                        hrp.CFrame = luckyBlock:GetPivot()
-                    end
                     
-                    print("➡️ Indo: " .. i .. "/4")
-                    task.wait(1)
+                    -- Teleporta
+                    hrp.CFrame = targetCFrame
+                    
+                    -- Atualiza a posição alvo caso o bloco se mova
+                    if luckyBlock:FindFirstChild("Handle") then
+                        targetCFrame = luckyBlock.Handle.CFrame
+                    else
+                        targetCFrame = luckyBlock:GetPivot()
+                    end
+
+                    task.wait() -- Espera o mínimo possível (frame a frame)
                 end
 
                 if morreuNoProcesso then 
-                    print("💀 Morreu na ida! Reiniciando...")
                     task.wait(0.5)
                     continue 
                 end
+                
+                print("✅ Chegamos perto (Raio < 1m). Parando teleporte.")
 
                 -- === ETAPA 2: ESPERA DE 6 SEGUNDOS ===
                 print("⏳ Aguardando 6 segundos...")
@@ -104,31 +116,28 @@ task.spawn(function()
                         break 
                     end
                     if not luckyBlock.Parent then
-                        break -- Se sumiu (pegou), já pode tentar voltar
+                        break -- Pegou o item
                     end
                     task.wait(0.1)
                 end
 
                 if morreuNoProcesso then
-                    print("💀 Morreu na espera! Reiniciando...")
                     task.wait(0.5)
                     continue
                 end
 
-                -- === ETAPA 3: 4 TELEPORTES DE VOLTA PARA O INÍCIO ===
-                print("🏠 Iniciando sequência de VOLTA...")
+                -- === ETAPA 3: VOLTAR PARA O INÍCIO (Checa Distância) ===
+                print("🏠 Voltando para a base segura...")
                 
-                for j = 1, 4 do
-                    -- Checa se ainda está vivo para não bugar o retorno
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                         LocalPlayer.Character.HumanoidRootPart.CFrame = startPos
-                    end
+                -- Loop até estar perto do início (Raio de 1 metro)
+                while (hrp.Position - startPos.Position).Magnitude > 3.5 do
+                    if hum.Health <= 0 then break end
                     
-                    print("⬅️ Voltando: " .. j .. "/4")
-                    task.wait(1)
+                    hrp.CFrame = startPos
+                    task.wait() -- Frame a frame
                 end
                 
-                -- Pausa curta antes de procurar o próximo, para garantir que estabilizou
+                print("✅ De volta à segurança.")
                 task.wait(1)
             end
         end
