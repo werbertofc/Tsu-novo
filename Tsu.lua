@@ -11,7 +11,7 @@ local rootPart = character:WaitForChild("HumanoidRootPart")
 local startPos = rootPart.CFrame 
 
 print("📍 Posição inicial salva!")
-print("--- Script: Botão Alternável (Caçar/Fugir) ---")
+print("--- Script: 100% Manual (Sem Reset Automático) ---")
 
 -- ================= CRIANDO O BOTÃO NA TELA =================
 local ScreenGui = Instance.new("ScreenGui")
@@ -19,11 +19,10 @@ local Button = Instance.new("TextButton")
 local UICorner = Instance.new("UICorner") 
 local UIStroke = Instance.new("UIStroke")
 
--- Tenta colocar no CoreGui (melhor), senão PlayerGui
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-ScreenGui.Name = "LuckyBlockControl_Toggle"
+ScreenGui.Name = "LuckyBlockControl_Manual"
 ScreenGui.ResetOnSpawn = false 
 
 Button.Name = "ToggleMode"
@@ -44,23 +43,21 @@ UIStroke.Parent = Button
 UIStroke.Thickness = 2
 UIStroke.Color = Color3.new(1, 1, 1)
 
--- VARIÁVEL DE ESTADO (False = Caçar/Vermelho, True = Fugir/Verde)
-local isFleeing = false
+-- VARIÁVEL DE ESTADO (Fica fora do loop para não resetar nunca)
+local isFleeing = false -- Começa no modo caçar, mas mantém o que você escolher
 
--- FUNÇÃO DO CLIQUE (INTERRUPTOR)
+-- FUNÇÃO DO CLIQUE
 Button.MouseButton1Click:Connect(function()
-    isFleeing = not isFleeing -- Inverte o estado atual
+    isFleeing = not isFleeing -- Troca o modo
     
     if isFleeing then
         -- MODO FUGIR (Verde)
         Button.BackgroundColor3 = Color3.new(0, 1, 0)
         Button.Text = "SAFE"
-        print("🟢 Modo FUGIR ativado! (Clique para voltar a caçar)")
     else
         -- MODO CAÇAR (Vermelho)
         Button.BackgroundColor3 = Color3.new(1, 0, 0)
         Button.Text = "HUNT"
-        print("🔴 Modo CAÇAR ativado!")
     end
 end)
 
@@ -77,7 +74,7 @@ if newMap then
 end
 
 -- =================================================================
--- PARTE 2: AUTO COLLECT (Loop de 3 segundos)
+-- PARTE 2: AUTO COLLECT
 -- =================================================================
 task.spawn(function()
     local collectRemote = ReplicatedStorage:WaitForChild("SharedModules")
@@ -94,7 +91,7 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK + LÓGICA DO INTERRUPTOR
+-- PARTE 3: LUCKY BLOCK (Lógica 100% Manual)
 -- =================================================================
 task.spawn(function()
     print("🍀 Monitoramento Iniciado!")
@@ -116,55 +113,34 @@ task.spawn(function()
             local friendsFolder = liveFolder and liveFolder:FindFirstChild("Friends")
             local luckyBlock = friendsFolder and friendsFolder:FindFirstChild("OG Lucky Block")
 
+            -- O Script só age se o Lucky Block EXISTIR
             if luckyBlock then
-                print("🚀 Lucky Block na área!")
                 
-                -- Se encontrar um novo bloco, garante que começa no modo CAÇAR (Vermelho)
-                -- Se você quiser que ele lembre o estado anterior, remova as 3 linhas abaixo.
-                isFleeing = false
-                Button.BackgroundColor3 = Color3.new(1, 0, 0)
-                Button.Text = "HUNT"
-
-                -- === LOOP: ENQUANTO O OBJETO EXISTIR ===
+                -- Enquanto ele existir na pasta...
                 while luckyBlock.Parent do
                     if hum.Health <= 0 then break end
 
                     if isFleeing then
-                        -- >>> MODO VERDE: FUGIR PARA A BASE <<<
-                        -- Teleporta rápido para o início
+                        -- >>> MODO VERDE: FUGIR <<< (Ativo enquanto objeto existe)
                         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                              LocalPlayer.Character.HumanoidRootPart.CFrame = startPos
                         end
                         task.wait(0.1) -- Fuga rápida
                     else
-                        -- >>> MODO VERMELHO: CAÇAR O OBJETO <<<
+                        -- >>> MODO VERMELHO: CAÇAR <<< (Ativo enquanto objeto existe)
                         if luckyBlock:FindFirstChild("Handle") then
                             hrp.CFrame = luckyBlock.Handle.CFrame
                         else
                             hrp.CFrame = luckyBlock:GetPivot()
                         end
-                        -- Caça a cada 1 segundo (conforme pedido)
+                        -- Intervalo de 1 segundo para caça
                         task.wait(1)
                     end
                 end
                 
-                -- === FIM DO CICLO (Objeto sumiu) ===
-                print("✅ Objeto sumiu! Resetando para o próximo.")
-                
-                -- Reseta o botão para Vermelho automaticamente
-                isFleeing = false
-                Button.BackgroundColor3 = Color3.new(1, 0, 0)
-                Button.Text = "HUNT"
-                
-                -- Segurança final: Teleporta para a base algumas vezes
-                for j = 1, 10 do
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                         LocalPlayer.Character.HumanoidRootPart.CFrame = startPos
-                    end
-                    task.wait(0.05)
-                end
-                
-                task.wait(1)
+                -- Se saiu do While, é porque o objeto sumiu.
+                -- O script para de fazer qualquer coisa e volta a esperar o próximo.
+                print("✅ Objeto sumiu da pasta. Aguardando o próximo...")
             end
         end
     end
