@@ -5,18 +5,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
 -- ================= CONFIGURAÇÃO DO INÍCIO AUTOMÁTICO =================
--- Pega a posição atual do jogador assim que o script executa
+-- Salva o local seguro assim que você executa o script
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
-local startPos = rootPart.CFrame -- Salva a posição exata de onde você ativou o script
+local startPos = rootPart.CFrame 
 
-print("📍 Posição inicial salva! É para cá que voltaremos.")
--- =====================================================================
-
-print("--- Script Iniciado: VIP Doors + Auto Collect + Teleporte com Delay ---")
+print("📍 Posição inicial salva com sucesso!")
+print("--- Script Iniciado: VIP Doors + Auto Collect + Teleporte Triplo ---")
 
 -- =================================================================
--- PARTE 1: APAGAR VIP DOORS (Executa uma vez)
+-- PARTE 1: APAGAR VIP DOORS (Apenas uma vez)
 -- =================================================================
 local newMap = Workspace:FindFirstChild("NewMapFully")
 if newMap then
@@ -28,7 +26,7 @@ if newMap then
 end
 
 -- =================================================================
--- PARTE 2: AUTO COLLECT (Loop de 3 segundos)
+-- PARTE 2: AUTO COLLECT (Loop de 3 segundos - Slots 1 ao 90)
 -- =================================================================
 task.spawn(function()
     local collectRemote = ReplicatedStorage:WaitForChild("SharedModules")
@@ -46,44 +44,51 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK (Teleporte -> Espera 6s -> Volta)
+-- PARTE 3: LUCKY BLOCK (Teleporte 3x -> Espera 6s -> Volta)
 -- =================================================================
 task.spawn(function()
     print("🍀 Monitoramento de Lucky Block Iniciado!")
     
     while true do
-        task.wait(0.2) -- Verifica rapidamente, mas sem travar o jogo
+        task.wait(0.2) -- Loop rápido de verificação
         
-        -- Atualiza o personagem caso você tenha morrido/resetado
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") then
             local hrp = char.HumanoidRootPart
             
-            -- Verifica o caminho: Workspace > Live > Friends > OG Lucky Block
+            -- Caminho: Workspace > Live > Friends > OG Lucky Block
             local liveFolder = Workspace:FindFirstChild("Live")
             local friendsFolder = liveFolder and liveFolder:FindFirstChild("Friends")
             local luckyBlock = friendsFolder and friendsFolder:FindFirstChild("OG Lucky Block")
 
             if luckyBlock then
-                print("🚀 Lucky Block encontrado! Teleportando...")
-                
-                -- 1. Teleporta para o Lucky Block
-                if luckyBlock:FindFirstChild("Handle") then
-                    hrp.CFrame = luckyBlock.Handle.CFrame
-                else
-                    hrp.CFrame = luckyBlock:GetPivot()
+                print("🚀 Lucky Block detectado! Forçando teleporte...")
+
+                -- === CORREÇÃO: TELEPORTAR 3 VEZES PARA NÃO VOLTAR ===
+                for i = 1, 3 do
+                    -- Verifica se o bloco ainda existe antes de tentar ir
+                    if luckyBlock.Parent then
+                        if luckyBlock:FindFirstChild("Handle") then
+                            hrp.CFrame = luckyBlock.Handle.CFrame
+                        else
+                            hrp.CFrame = luckyBlock:GetPivot()
+                        end
+                    end
+                    -- Espera minúscula para o servidor registrar a posição
+                    task.wait(0.1) 
                 end
                 
-                -- 2. Espera 6 segundos LÁ no objeto (como pedido)
+                print("⏳ Aguardando 6 segundos no objeto...")
+                -- Espera 6 segundos no local para garantir a coleta
                 task.wait(6)
                 
-                -- 3. Teleporta de volta para o início salvo
+                -- Volta para o início
                 print("🏠 Voltando para o início...")
                 if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     LocalPlayer.Character.HumanoidRootPart.CFrame = startPos
                 end
                 
-                -- 4. Espera um pouquinho antes de checar de novo para não bugar
+                -- Espera 1 segundo para estabilizar antes de procurar de novo
                 task.wait(1)
             end
         end
