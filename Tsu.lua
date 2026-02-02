@@ -12,7 +12,7 @@ local rootPart = character:WaitForChild("HumanoidRootPart")
 local startPos = rootPart.CFrame 
 
 print("📍 Posição inicial salva!")
-print("--- Script: MODO CONGELADO (Zero Tremor) ---")
+print("--- Script: MODO COLETA (Sem Cancelar o 'E') ---")
 
 -- ================= CRIANDO O BOTÃO =================
 local ScreenGui = Instance.new("ScreenGui")
@@ -23,7 +23,7 @@ local UIStroke = Instance.new("UIStroke")
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-ScreenGui.Name = "LuckyBlock_Frozen"
+ScreenGui.Name = "LuckyBlock_Fix"
 ScreenGui.ResetOnSpawn = false 
 
 Button.Name = "ToggleMode"
@@ -31,7 +31,7 @@ Button.Parent = ScreenGui
 Button.BackgroundColor3 = Color3.new(1, 0, 0) -- COMEÇA VERMELHO
 Button.Position = UDim2.new(0.5, -20, 0.85, 0) 
 Button.Size = UDim2.new(0, 50, 0, 50)
-Button.Text = "HUNT\n(FROZEN)"
+Button.Text = "HUNT\n(AUTO)"
 Button.TextColor3 = Color3.new(1, 1, 1)
 Button.Font = Enum.Font.GothamBlack
 Button.TextSize = 10
@@ -44,21 +44,20 @@ UIStroke.Parent = Button
 UIStroke.Thickness = 3
 UIStroke.Color = Color3.new(1, 1, 1)
 
--- VARIÁVEL DE ESTADO
 local isFleeing = false 
 
 Button.MouseButton1Click:Connect(function()
     isFleeing = not isFleeing
     if isFleeing then
         Button.BackgroundColor3 = Color3.new(0, 1, 0)
-        Button.Text = "SAFE\n(FROZEN)"
-        -- Garante que descongela ao mudar de modo para poder mover
+        Button.Text = "SAFE\n(RUN)"
+        -- Garante que o personagem esteja solto
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.Anchored = false
         end
     else
         Button.BackgroundColor3 = Color3.new(1, 0, 0)
-        Button.Text = "HUNT\n(FROZEN)"
+        Button.Text = "HUNT\n(AUTO)"
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.Anchored = false
         end
@@ -95,10 +94,10 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK (Lógica de Congelamento)
+-- PARTE 3: LUCKY BLOCK (Lógica de Coleta Otimizada)
 -- =================================================================
 task.spawn(function()
-    print("❄️ Modo Congelamento Iniciado!")
+    print("🛠️ Modo Coleta Otimizada Ativado!")
     
     while true do
         RunService.RenderStepped:Wait()
@@ -109,7 +108,7 @@ task.spawn(function()
             local hum = char.Humanoid
             
             if hum.Health <= 0 then 
-                hrp.Anchored = false -- Se morrer, solta o corpo
+                hrp.Anchored = false 
                 continue 
             end
 
@@ -117,60 +116,56 @@ task.spawn(function()
             local friendsFolder = liveFolder and liveFolder:FindFirstChild("Friends")
             local luckyBlock = friendsFolder and friendsFolder:FindFirstChild("OG Lucky Block")
 
-            -- Se o Lucky Block existe...
             if luckyBlock then
                 
-                -- Enquanto ele existir na pasta...
                 while luckyBlock.Parent do
-                    if hum.Health <= 0 then 
-                        hrp.Anchored = false 
-                        break 
-                    end
+                    if hum.Health <= 0 then break end
 
-                    local targetCFrame = nil
+                    local targetPosition = Vector3.new(0,0,0)
+                    local shouldInteract = false
 
                     if isFleeing then
-                        -- >>> MODO SAFE: Base <<<
-                        targetCFrame = startPos
+                        -- MODO FUGIR: Vai para a base
+                        targetPosition = startPos.Position
                     else
-                        -- >>> MODO HUNT: Objeto (COM OFFSET PARA CIMA) <<<
-                        local blockPos
+                        -- MODO CAÇAR: Vai para o Lucky Block
+                        shouldInteract = true
                         if luckyBlock:FindFirstChild("Handle") then
-                            blockPos = luckyBlock.Handle.Position
+                            targetPosition = luckyBlock.Handle.Position
                         else
-                            blockPos = luckyBlock:GetPivot().Position
+                            targetPosition = luckyBlock:GetPivot().Position
                         end
-                        -- Fica 3.5 studs ACIMA do bloco para não bugar colisão
-                        -- Mantém a rotação da SUA câmera (hrp.Rotation)
-                        targetCFrame = CFrame.new(blockPos + Vector3.new(0, 3.5, 0)) * hrp.CFrame.Rotation
                     end
 
-                    -- === LÓGICA DE CONGELAMENTO ===
-                    local dist = (hrp.Position - targetCFrame.Position).Magnitude
+                    -- Distância até o alvo
+                    local distance = (hrp.Position - targetPosition).Magnitude
 
-                    if dist > 4 then
-                        -- Se está longe: DESCONGELA e voa até lá
-                        hrp.Anchored = false
-                        hrp.CFrame = targetCFrame
-                    else
-                        -- Se está perto: CONGELA (Vira estátua)
-                        -- Isso para 100% do tremor e permite coletar
-                        hrp.CFrame = targetCFrame
-                        hrp.Anchored = true 
+                    -- === LÓGICA DE MOVIMENTO INTELIGENTE ===
+                    if distance > 3 then
+                        -- ESTÁ LONGE? Teleporta usando CFrame (Rápido)
+                        -- Mantém a rotação da câmera para não girar a tela
+                        hrp.CFrame = CFrame.new(targetPosition) * hrp.CFrame.Rotation
                         hrp.Velocity = Vector3.new(0,0,0)
+                    else
+                        -- ESTÁ PERTO? (Zona de Coleta)
+                        -- NÃO ATUALIZA O CFRAME! (Isso permite segurar o botão sem cancelar)
+                        -- Apenas zera a velocidade para não ser empurrado pela água
+                        hrp.Velocity = Vector3.new(0,0,0)
+                        hrp.RotVelocity = Vector3.new(0,0,0)
+                        
+                        -- Tenta interagir automaticamente (Auto-E)
+                        if shouldInteract then
+                            -- Procura por ProximityPrompt dentro do Lucky Block
+                            for _, prompt in pairs(luckyBlock:GetDescendants()) do
+                                if prompt:IsA("ProximityPrompt") then
+                                    -- Tenta disparar o prompt instantaneamente
+                                    fireproximityprompt(prompt)
+                                end
+                            end
+                        end
                     end
                     
                     RunService.RenderStepped:Wait()
-                end
-                
-                -- QUANDO SAI DO LOOP (OBJETO SUMIU):
-                -- Solta o boneco imediatamente!
-                hrp.Anchored = false
-                
-            else
-                -- Se não tem Lucky Block, garante que não está preso
-                if hrp.Anchored == true then
-                    hrp.Anchored = false
                 end
             end
         end
