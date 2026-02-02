@@ -12,7 +12,7 @@ local rootPart = character:WaitForChild("HumanoidRootPart")
 local startPos = rootPart.CFrame 
 
 print("📍 Posição inicial salva!")
-print("--- Script: BRAINROT ESTABILIZADO (Anti-Tremor) ---")
+print("--- Script: MODO CONGELADO (Zero Tremor) ---")
 
 -- ================= CRIANDO O BOTÃO =================
 local ScreenGui = Instance.new("ScreenGui")
@@ -23,7 +23,7 @@ local UIStroke = Instance.new("UIStroke")
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-ScreenGui.Name = "LuckyBlock_Stable"
+ScreenGui.Name = "LuckyBlock_Frozen"
 ScreenGui.ResetOnSpawn = false 
 
 Button.Name = "ToggleMode"
@@ -31,7 +31,7 @@ Button.Parent = ScreenGui
 Button.BackgroundColor3 = Color3.new(1, 0, 0) -- COMEÇA VERMELHO
 Button.Position = UDim2.new(0.5, -20, 0.85, 0) 
 Button.Size = UDim2.new(0, 50, 0, 50)
-Button.Text = "HUNT\n(STABLE)"
+Button.Text = "HUNT\n(FROZEN)"
 Button.TextColor3 = Color3.new(1, 1, 1)
 Button.Font = Enum.Font.GothamBlack
 Button.TextSize = 10
@@ -51,10 +51,17 @@ Button.MouseButton1Click:Connect(function()
     isFleeing = not isFleeing
     if isFleeing then
         Button.BackgroundColor3 = Color3.new(0, 1, 0)
-        Button.Text = "SAFE\n(STABLE)"
+        Button.Text = "SAFE\n(FROZEN)"
+        -- Garante que descongela ao mudar de modo para poder mover
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.Anchored = false
+        end
     else
         Button.BackgroundColor3 = Color3.new(1, 0, 0)
-        Button.Text = "HUNT\n(STABLE)"
+        Button.Text = "HUNT\n(FROZEN)"
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.Anchored = false
+        end
     end
 end)
 
@@ -88,20 +95,23 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK (Lógica Estabilizada)
+-- PARTE 3: LUCKY BLOCK (Lógica de Congelamento)
 -- =================================================================
 task.spawn(function()
-    print("⚡ Brainrot Estabilizado Iniciado!")
+    print("❄️ Modo Congelamento Iniciado!")
     
     while true do
-        RunService.RenderStepped:Wait() -- Velocidade máxima (Frame a Frame)
+        RunService.RenderStepped:Wait()
         
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
             local hrp = char.HumanoidRootPart
             local hum = char.Humanoid
             
-            if hum.Health <= 0 then continue end
+            if hum.Health <= 0 then 
+                hrp.Anchored = false -- Se morrer, solta o corpo
+                continue 
+            end
 
             local liveFolder = Workspace:FindFirstChild("Live")
             local friendsFolder = liveFolder and liveFolder:FindFirstChild("Friends")
@@ -112,40 +122,55 @@ task.spawn(function()
                 
                 -- Enquanto ele existir na pasta...
                 while luckyBlock.Parent do
-                    if hum.Health <= 0 then break end
-
-                    local targetPosition = Vector3.new(0,0,0)
-
-                    if isFleeing then
-                        -- >>> MODO SAFE: Alvo é a Base <<<
-                        targetPosition = startPos.Position
-                    else
-                        -- >>> MODO HUNT: Alvo é o Objeto <<<
-                        if luckyBlock:FindFirstChild("Handle") then
-                            targetPosition = luckyBlock.Handle.Position
-                        else
-                            targetPosition = luckyBlock:GetPivot().Position
-                        end
+                    if hum.Health <= 0 then 
+                        hrp.Anchored = false 
+                        break 
                     end
 
-                    -- === LÓGICA ANTI-TREMOR ===
-                    -- Calcula a distância entre você e o alvo
-                    local distance = (hrp.Position - targetPosition).Magnitude
+                    local targetCFrame = nil
 
-                    if distance > 2 then
-                        -- Se estiver longe (> 2 studs), TELEPORTA mantendo sua rotação atual
-                        -- Usamos CFrame.new(pos) * hrp.CFrame.Rotation para não girar a tela
-                        hrp.CFrame = CFrame.new(targetPosition) * hrp.CFrame.Rotation
-                        hrp.Velocity = Vector3.new(0,0,0) -- Tira inércia
+                    if isFleeing then
+                        -- >>> MODO SAFE: Base <<<
+                        targetCFrame = startPos
                     else
-                        -- Se estiver PERTO (Zona de Interação), NÃO teleporta o CFrame.
-                        -- Apenas zera a velocidade para você não ser empurrado pela onda.
-                        -- Isso faz a câmera parar de tremer totalmente.
+                        -- >>> MODO HUNT: Objeto (COM OFFSET PARA CIMA) <<<
+                        local blockPos
+                        if luckyBlock:FindFirstChild("Handle") then
+                            blockPos = luckyBlock.Handle.Position
+                        else
+                            blockPos = luckyBlock:GetPivot().Position
+                        end
+                        -- Fica 3.5 studs ACIMA do bloco para não bugar colisão
+                        -- Mantém a rotação da SUA câmera (hrp.Rotation)
+                        targetCFrame = CFrame.new(blockPos + Vector3.new(0, 3.5, 0)) * hrp.CFrame.Rotation
+                    end
+
+                    -- === LÓGICA DE CONGELAMENTO ===
+                    local dist = (hrp.Position - targetCFrame.Position).Magnitude
+
+                    if dist > 4 then
+                        -- Se está longe: DESCONGELA e voa até lá
+                        hrp.Anchored = false
+                        hrp.CFrame = targetCFrame
+                    else
+                        -- Se está perto: CONGELA (Vira estátua)
+                        -- Isso para 100% do tremor e permite coletar
+                        hrp.CFrame = targetCFrame
+                        hrp.Anchored = true 
                         hrp.Velocity = Vector3.new(0,0,0)
-                        hrp.RotVelocity = Vector3.new(0,0,0)
                     end
                     
                     RunService.RenderStepped:Wait()
+                end
+                
+                -- QUANDO SAI DO LOOP (OBJETO SUMIU):
+                -- Solta o boneco imediatamente!
+                hrp.Anchored = false
+                
+            else
+                -- Se não tem Lucky Block, garante que não está preso
+                if hrp.Anchored == true then
+                    hrp.Anchored = false
                 end
             end
         end
