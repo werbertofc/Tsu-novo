@@ -12,7 +12,7 @@ local rootPart = character:WaitForChild("HumanoidRootPart")
 local startPos = rootPart.CFrame 
 
 print("📍 Posição inicial salva!")
-print("--- Script: MODO COLETA (Sem Cancelar o 'E') ---")
+print("--- Script: MODO CAÇA MANUAL (Estável) ---")
 
 -- ================= CRIANDO O BOTÃO =================
 local ScreenGui = Instance.new("ScreenGui")
@@ -23,7 +23,7 @@ local UIStroke = Instance.new("UIStroke")
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-ScreenGui.Name = "LuckyBlock_Fix"
+ScreenGui.Name = "LuckyBlock_Manual"
 ScreenGui.ResetOnSpawn = false 
 
 Button.Name = "ToggleMode"
@@ -31,7 +31,7 @@ Button.Parent = ScreenGui
 Button.BackgroundColor3 = Color3.new(1, 0, 0) -- COMEÇA VERMELHO
 Button.Position = UDim2.new(0.5, -20, 0.85, 0) 
 Button.Size = UDim2.new(0, 50, 0, 50)
-Button.Text = "HUNT\n(AUTO)"
+Button.Text = "HUNT\n(MANUAL)"
 Button.TextColor3 = Color3.new(1, 1, 1)
 Button.Font = Enum.Font.GothamBlack
 Button.TextSize = 10
@@ -51,13 +51,12 @@ Button.MouseButton1Click:Connect(function()
     if isFleeing then
         Button.BackgroundColor3 = Color3.new(0, 1, 0)
         Button.Text = "SAFE\n(RUN)"
-        -- Garante que o personagem esteja solto
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.Anchored = false
         end
     else
         Button.BackgroundColor3 = Color3.new(1, 0, 0)
-        Button.Text = "HUNT\n(AUTO)"
+        Button.Text = "HUNT\n(MANUAL)"
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.Anchored = false
         end
@@ -94,10 +93,10 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK (Lógica de Coleta Otimizada)
+-- PARTE 3: LUCKY BLOCK (Lógica de Aproximação)
 -- =================================================================
 task.spawn(function()
-    print("🛠️ Modo Coleta Otimizada Ativado!")
+    print("🛠️ Modo Caça Ativado!")
     
     while true do
         RunService.RenderStepped:Wait()
@@ -122,14 +121,12 @@ task.spawn(function()
                     if hum.Health <= 0 then break end
 
                     local targetPosition = Vector3.new(0,0,0)
-                    local shouldInteract = false
 
                     if isFleeing then
                         -- MODO FUGIR: Vai para a base
                         targetPosition = startPos.Position
                     else
                         -- MODO CAÇAR: Vai para o Lucky Block
-                        shouldInteract = true
                         if luckyBlock:FindFirstChild("Handle") then
                             targetPosition = luckyBlock.Handle.Position
                         else
@@ -140,29 +137,17 @@ task.spawn(function()
                     -- Distância até o alvo
                     local distance = (hrp.Position - targetPosition).Magnitude
 
-                    -- === LÓGICA DE MOVIMENTO INTELIGENTE ===
+                    -- === LÓGICA DE MOVIMENTO ===
                     if distance > 3 then
-                        -- ESTÁ LONGE? Teleporta usando CFrame (Rápido)
-                        -- Mantém a rotação da câmera para não girar a tela
+                        -- ESTÁ LONGE? Teleporta rápido
                         hrp.CFrame = CFrame.new(targetPosition) * hrp.CFrame.Rotation
                         hrp.Velocity = Vector3.new(0,0,0)
                     else
                         -- ESTÁ PERTO? (Zona de Coleta)
-                        -- NÃO ATUALIZA O CFRAME! (Isso permite segurar o botão sem cancelar)
-                        -- Apenas zera a velocidade para não ser empurrado pela água
+                        -- Para de mexer no CFrame para você poder apertar "E"
+                        -- Zera a velocidade para a água não te empurrar
                         hrp.Velocity = Vector3.new(0,0,0)
                         hrp.RotVelocity = Vector3.new(0,0,0)
-                        
-                        -- Tenta interagir automaticamente (Auto-E)
-                        if shouldInteract then
-                            -- Procura por ProximityPrompt dentro do Lucky Block
-                            for _, prompt in pairs(luckyBlock:GetDescendants()) do
-                                if prompt:IsA("ProximityPrompt") then
-                                    -- Tenta disparar o prompt instantaneamente
-                                    fireproximityprompt(prompt)
-                                end
-                            end
-                        end
                     end
                     
                     RunService.RenderStepped:Wait()
