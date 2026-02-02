@@ -12,7 +12,7 @@ local rootPart = character:WaitForChild("HumanoidRootPart")
 local startPos = rootPart.CFrame 
 
 print("📍 Posição inicial salva!")
-print("--- Script: MODO CAÇA MANUAL (Estável) ---")
+print("--- Script: ZERO TREMOR (Distância Inteligente) ---")
 
 -- ================= CRIANDO O BOTÃO =================
 local ScreenGui = Instance.new("ScreenGui")
@@ -23,7 +23,7 @@ local UIStroke = Instance.new("UIStroke")
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-ScreenGui.Name = "LuckyBlock_Manual"
+ScreenGui.Name = "LuckyBlock_ZeroTremor"
 ScreenGui.ResetOnSpawn = false 
 
 Button.Name = "ToggleMode"
@@ -31,7 +31,7 @@ Button.Parent = ScreenGui
 Button.BackgroundColor3 = Color3.new(1, 0, 0) -- COMEÇA VERMELHO
 Button.Position = UDim2.new(0.5, -20, 0.85, 0) 
 Button.Size = UDim2.new(0, 50, 0, 50)
-Button.Text = "HUNT\n(MANUAL)"
+Button.Text = "HUNT\n(CLEAN)"
 Button.TextColor3 = Color3.new(1, 1, 1)
 Button.Font = Enum.Font.GothamBlack
 Button.TextSize = 10
@@ -56,7 +56,7 @@ Button.MouseButton1Click:Connect(function()
         end
     else
         Button.BackgroundColor3 = Color3.new(1, 0, 0)
-        Button.Text = "HUNT\n(MANUAL)"
+        Button.Text = "HUNT\n(CLEAN)"
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.Anchored = false
         end
@@ -93,10 +93,10 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK (Lógica de Aproximação)
+-- PARTE 3: LUCKY BLOCK (Lógica Zero Tremor)
 -- =================================================================
 task.spawn(function()
-    print("🛠️ Modo Caça Ativado!")
+    print("🛠️ Modo Zero Tremor Ativado!")
     
     while true do
         RunService.RenderStepped:Wait()
@@ -107,7 +107,6 @@ task.spawn(function()
             local hum = char.Humanoid
             
             if hum.Health <= 0 then 
-                hrp.Anchored = false 
                 continue 
             end
 
@@ -123,29 +122,32 @@ task.spawn(function()
                     local targetPosition = Vector3.new(0,0,0)
 
                     if isFleeing then
-                        -- MODO FUGIR: Vai para a base
+                        -- MODO FUGIR: Base
                         targetPosition = startPos.Position
                     else
-                        -- MODO CAÇAR: Vai para o Lucky Block
+                        -- MODO CAÇAR: Objeto + ALTURA EXTRA
                         if luckyBlock:FindFirstChild("Handle") then
                             targetPosition = luckyBlock.Handle.Position
                         else
                             targetPosition = luckyBlock:GetPivot().Position
                         end
+                        -- Adiciona 4 studs de altura (Mais alto para não bugar no chão)
+                        targetPosition = targetPosition + Vector3.new(0, 4, 0)
                     end
 
-                    -- Distância até o alvo
+                    -- Calcula a distância
                     local distance = (hrp.Position - targetPosition).Magnitude
 
-                    -- === LÓGICA DE MOVIMENTO ===
-                    if distance > 3 then
-                        -- ESTÁ LONGE? Teleporta rápido
+                    -- === A GRANDE MUDANÇA ===
+                    if distance > 4 then
+                        -- ESTÁ LONGE (> 4 studs / aprox 1 metro)?
+                        -- TELEPORTA!
                         hrp.CFrame = CFrame.new(targetPosition) * hrp.CFrame.Rotation
-                        hrp.Velocity = Vector3.new(0,0,0)
+                        hrp.Velocity = Vector3.new(0,0,0) -- Tira a velocidade para não voar longe
                     else
-                        -- ESTÁ PERTO? (Zona de Coleta)
-                        -- Para de mexer no CFrame para você poder apertar "E"
-                        -- Zera a velocidade para a água não te empurrar
+                        -- ESTÁ PERTO (< 1 metro)?
+                        -- NÃO FAZ NADA COM O CFRAME! (Isso elimina o tremor)
+                        -- Apenas zera a velocidade para você ficar parado no ar/chão
                         hrp.Velocity = Vector3.new(0,0,0)
                         hrp.RotVelocity = Vector3.new(0,0,0)
                     end
