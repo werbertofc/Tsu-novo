@@ -6,13 +6,17 @@ local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
--- ================= CONFIGURAÇÃO DO INÍCIO AUTOMÁTICO =================
+-- ================= CONFIGURAÇÕES =================
+local WAVE_NAME = "Tsunamis" -- O nome exato da onda
+local SAFE_DISTANCE = 60 -- Distância para ativar o escudo (aumente se a onda for muito grande)
+
+-- Salva a posição inicial
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local rootPart = character:WaitForChild("HumanoidRootPart")
 local startPos = rootPart.CFrame 
 
 print("📍 Posição inicial salva!")
-print("--- Script: ZERO TREMOR (Distância Inteligente) ---")
+print("--- Script: MODO CAÇA + PROTEÇÃO ANTI-ONDA ---")
 
 -- ================= CRIANDO O BOTÃO =================
 local ScreenGui = Instance.new("ScreenGui")
@@ -23,7 +27,7 @@ local UIStroke = Instance.new("UIStroke")
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-ScreenGui.Name = "LuckyBlock_ZeroTremor"
+ScreenGui.Name = "LuckyBlock_WaveProtect"
 ScreenGui.ResetOnSpawn = false 
 
 Button.Name = "ToggleMode"
@@ -31,7 +35,7 @@ Button.Parent = ScreenGui
 Button.BackgroundColor3 = Color3.new(1, 0, 0) -- COMEÇA VERMELHO
 Button.Position = UDim2.new(0.5, -20, 0.85, 0) 
 Button.Size = UDim2.new(0, 50, 0, 50)
-Button.Text = "HUNT\n(CLEAN)"
+Button.Text = "HUNT\n(WAVE)"
 Button.TextColor3 = Color3.new(1, 1, 1)
 Button.Font = Enum.Font.GothamBlack
 Button.TextSize = 10
@@ -56,7 +60,7 @@ Button.MouseButton1Click:Connect(function()
         end
     else
         Button.BackgroundColor3 = Color3.new(1, 0, 0)
-        Button.Text = "HUNT\n(CLEAN)"
+        Button.Text = "HUNT\n(WAVE)"
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.Anchored = false
         end
@@ -93,10 +97,10 @@ task.spawn(function()
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK (Lógica Zero Tremor)
+-- PARTE 3: LÓGICA PRINCIPAL (CAÇA + ONDA)
 -- =================================================================
 task.spawn(function()
-    print("🛠️ Modo Zero Tremor Ativado!")
+    print("🌊 Proteção Anti-Onda Ativada!")
     
     while true do
         RunService.RenderStepped:Wait()
@@ -107,10 +111,47 @@ task.spawn(function()
             local hum = char.Humanoid
             
             if hum.Health <= 0 then 
+                hrp.Anchored = false 
                 continue 
             end
 
+            -- 1. DETECÇÃO DA ONDA (PRIORIDADE MÁXIMA)
             local liveFolder = Workspace:FindFirstChild("Live")
+            local tsunamiObject = liveFolder and liveFolder:FindFirstChild(WAVE_NAME)
+            local isWaveDangerous = false
+
+            if tsunamiObject then
+                -- Pega a posição da onda
+                local wavePos
+                if tsunamiObject:IsA("BasePart") then
+                    wavePos = tsunamiObject.Position
+                else
+                    wavePos = tsunamiObject:GetPivot().Position
+                end
+
+                -- Calcula distância
+                local distWave = (hrp.Position - wavePos).Magnitude
+
+                -- SE A ONDA ESTIVER PERTO: ATIVA MODO ESCUDO
+                if distWave < SAFE_DISTANCE then
+                    isWaveDangerous = true
+                    hrp.Anchored = true -- TRAVA O PERSONAGEM
+                    hrp.Velocity = Vector3.new(0,0,0)
+                    
+                    -- Se quiser ver quando ativa, descomente a linha abaixo:
+                    -- print("🛡️ ONDA CHEGANDO! ESCUDO ATIVADO!") 
+                end
+            end
+
+            -- SE A ONDA ESTIVER PERTO, PULA O RESTO DO SCRIPT (NÃO TELEPORTA)
+            if isWaveDangerous then
+                continue -- Volta pro início do loop e mantém travado
+            end
+
+            -- 2. LÓGICA NORMAL DE CAÇA (Só roda se a onda estiver longe)
+            -- Garante que está solto se a onda já passou
+            hrp.Anchored = false 
+
             local friendsFolder = liveFolder and liveFolder:FindFirstChild("Friends")
             local luckyBlock = friendsFolder and friendsFolder:FindFirstChild("OG Lucky Block")
 
@@ -119,35 +160,42 @@ task.spawn(function()
                 while luckyBlock.Parent do
                     if hum.Health <= 0 then break end
 
+                    -- Verifica a onda DE NOVO dentro do loop para reação rápida
+                    local waveCheck = liveFolder:FindFirstChild(WAVE_NAME)
+                    if waveCheck then
+                        local wPos = waveCheck:IsA("BasePart") and waveCheck.Position or waveCheck:GetPivot().Position
+                        if (hrp.Position - wPos).Magnitude < SAFE_DISTANCE then
+                            hrp.Anchored = true -- Trava imediata dentro do loop
+                            hrp.Velocity = Vector3.new(0,0,0)
+                            RunService.RenderStepped:Wait()
+                            continue -- Pula o teleporte
+                        end
+                    end
+                    
+                    -- Se a onda não tá perigosa, destrava e segue a vida
+                    hrp.Anchored = false
+
                     local targetPosition = Vector3.new(0,0,0)
 
                     if isFleeing then
-                        -- MODO FUGIR: Base
                         targetPosition = startPos.Position
                     else
-                        -- MODO CAÇAR: Objeto + ALTURA EXTRA
                         if luckyBlock:FindFirstChild("Handle") then
                             targetPosition = luckyBlock.Handle.Position
                         else
                             targetPosition = luckyBlock:GetPivot().Position
                         end
-                        -- Adiciona 4 studs de altura (Mais alto para não bugar no chão)
-                        targetPosition = targetPosition + Vector3.new(0, 4, 0)
+                        targetPosition = targetPosition + Vector3.new(0, 4, 0) -- Altura
                     end
 
-                    -- Calcula a distância
                     local distance = (hrp.Position - targetPosition).Magnitude
 
-                    -- === A GRANDE MUDANÇA ===
                     if distance > 4 then
-                        -- ESTÁ LONGE (> 4 studs / aprox 1 metro)?
-                        -- TELEPORTA!
+                        -- Longe: Teleporta
                         hrp.CFrame = CFrame.new(targetPosition) * hrp.CFrame.Rotation
-                        hrp.Velocity = Vector3.new(0,0,0) -- Tira a velocidade para não voar longe
+                        hrp.Velocity = Vector3.new(0,0,0)
                     else
-                        -- ESTÁ PERTO (< 1 metro)?
-                        -- NÃO FAZ NADA COM O CFRAME! (Isso elimina o tremor)
-                        -- Apenas zera a velocidade para você ficar parado no ar/chão
+                        -- Perto: Para de teleportar (Zero Tremor)
                         hrp.Velocity = Vector3.new(0,0,0)
                         hrp.RotVelocity = Vector3.new(0,0,0)
                     end
