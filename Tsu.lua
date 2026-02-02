@@ -2,7 +2,7 @@ local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
-local RunService = game:GetService("RunService") -- Serviço para velocidade máxima
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -12,7 +12,7 @@ local rootPart = character:WaitForChild("HumanoidRootPart")
 local startPos = rootPart.CFrame 
 
 print("📍 Posição inicial salva!")
-print("--- Script: MODO BRAINROT (Velocidade Infinita) ---")
+print("--- Script: BRAINROT ESTABILIZADO (Anti-Tremor) ---")
 
 -- ================= CRIANDO O BOTÃO =================
 local ScreenGui = Instance.new("ScreenGui")
@@ -23,18 +23,18 @@ local UIStroke = Instance.new("UIStroke")
 pcall(function() ScreenGui.Parent = CoreGui end)
 if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-ScreenGui.Name = "LuckyBlock_Brainrot"
+ScreenGui.Name = "LuckyBlock_Stable"
 ScreenGui.ResetOnSpawn = false 
 
 Button.Name = "ToggleMode"
 Button.Parent = ScreenGui
 Button.BackgroundColor3 = Color3.new(1, 0, 0) -- COMEÇA VERMELHO
 Button.Position = UDim2.new(0.5, -20, 0.85, 0) 
-Button.Size = UDim2.new(0, 50, 0, 50) -- Aumentei um pouco para 50x50
-Button.Text = "HUNT\n(MAX)"
+Button.Size = UDim2.new(0, 50, 0, 50)
+Button.Text = "HUNT\n(STABLE)"
 Button.TextColor3 = Color3.new(1, 1, 1)
-Button.Font = Enum.Font.GothamBlack -- Fonte mais grossa
-Button.TextSize = 12
+Button.Font = Enum.Font.GothamBlack
+Button.TextSize = 10
 Button.Active = true
 Button.Draggable = true 
 
@@ -47,16 +47,14 @@ UIStroke.Color = Color3.new(1, 1, 1)
 -- VARIÁVEL DE ESTADO
 local isFleeing = false 
 
--- FUNÇÃO DO CLIQUE
 Button.MouseButton1Click:Connect(function()
     isFleeing = not isFleeing
-    
     if isFleeing then
         Button.BackgroundColor3 = Color3.new(0, 1, 0)
-        Button.Text = "SAFE\n(MAX)"
+        Button.Text = "SAFE\n(STABLE)"
     else
         Button.BackgroundColor3 = Color3.new(1, 0, 0)
-        Button.Text = "HUNT\n(MAX)"
+        Button.Text = "HUNT\n(STABLE)"
     end
 end)
 
@@ -82,23 +80,21 @@ task.spawn(function()
         :WaitForChild("Collect Earnings")
 
     while true do
-        -- Tenta coletar o mais rápido possível sem crashar o jogo
         for i = 1, 90 do
             collectRemote:FireServer(tostring(i))
         end
-        task.wait(1.5) -- Reduzi um pouco o tempo do dinheiro tbm
+        task.wait(1.5)
     end
 end)
 
 -- =================================================================
--- PARTE 3: LUCKY BLOCK (Velocidade da Luz)
+-- PARTE 3: LUCKY BLOCK (Lógica Estabilizada)
 -- =================================================================
 task.spawn(function()
-    print("⚡ Brainrot Teleport Iniciado!")
+    print("⚡ Brainrot Estabilizado Iniciado!")
     
     while true do
-        -- RenderStepped:Wait() roda a cada frame da tela (muito mais rápido que task.wait)
-        RunService.RenderStepped:Wait()
+        RunService.RenderStepped:Wait() -- Velocidade máxima (Frame a Frame)
         
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
@@ -113,28 +109,43 @@ task.spawn(function()
 
             -- Se o Lucky Block existe...
             if luckyBlock then
-                -- LOOP INSANO: Roda a cada frame sem pausa
+                
+                -- Enquanto ele existir na pasta...
                 while luckyBlock.Parent do
                     if hum.Health <= 0 then break end
 
+                    local targetPosition = Vector3.new(0,0,0)
+
                     if isFleeing then
-                        -- >>> MODO VERDE (SAFE): TRAVA NO INÍCIO <<<
-                        hrp.CFrame = startPos
-                        hrp.Velocity = Vector3.new(0,0,0) -- Zera a velocidade para não ser empurrado
+                        -- >>> MODO SAFE: Alvo é a Base <<<
+                        targetPosition = startPos.Position
                     else
-                        -- >>> MODO VERMELHO (HUNT): TRAVA NO OBJETO <<<
+                        -- >>> MODO HUNT: Alvo é o Objeto <<<
                         if luckyBlock:FindFirstChild("Handle") then
-                            hrp.CFrame = luckyBlock.Handle.CFrame
+                            targetPosition = luckyBlock.Handle.Position
                         else
-                            hrp.CFrame = luckyBlock:GetPivot()
+                            targetPosition = luckyBlock:GetPivot().Position
                         end
-                        hrp.Velocity = Vector3.new(0,0,0) -- Anula física para grudar mais
+                    end
+
+                    -- === LÓGICA ANTI-TREMOR ===
+                    -- Calcula a distância entre você e o alvo
+                    local distance = (hrp.Position - targetPosition).Magnitude
+
+                    if distance > 2 then
+                        -- Se estiver longe (> 2 studs), TELEPORTA mantendo sua rotação atual
+                        -- Usamos CFrame.new(pos) * hrp.CFrame.Rotation para não girar a tela
+                        hrp.CFrame = CFrame.new(targetPosition) * hrp.CFrame.Rotation
+                        hrp.Velocity = Vector3.new(0,0,0) -- Tira inércia
+                    else
+                        -- Se estiver PERTO (Zona de Interação), NÃO teleporta o CFrame.
+                        -- Apenas zera a velocidade para você não ser empurrado pela onda.
+                        -- Isso faz a câmera parar de tremer totalmente.
+                        hrp.Velocity = Vector3.new(0,0,0)
+                        hrp.RotVelocity = Vector3.new(0,0,0)
                     end
                     
-                    -- NÃO TEM WAIT AQUI! 
-                    -- Usamos RenderStepped no topo do loop externo, mas dentro do while
-                    -- precisamos de um delay mínimo para não congelar o PC.
-                    RunService.RenderStepped:Wait() 
+                    RunService.RenderStepped:Wait()
                 end
             end
         end
